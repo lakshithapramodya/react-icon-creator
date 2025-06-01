@@ -1,12 +1,22 @@
 import React, { useState } from "react";
 import { IconCreatorProps, IconData } from "../types";
-import { optimizeSVG, generateCSS, isValidSVG } from "../utils/iconUtils";
+import {
+  optimizeSVG,
+  generateCSS,
+  isValidSVG,
+  downloadCSS,
+  saveIconToDirectory,
+  saveSvgToDirectory,
+} from "../utils/iconUtils";
 
 export const IconCreator: React.FC<IconCreatorProps> = ({
   onIconCreated,
   onError,
   className = "",
   style = {},
+  saveToDirectory = false,
+  outputDirectory = "public/icons",
+  onFileSaved,
 }) => {
   const [svg, setSvg] = useState("");
   const [iconClassName, setIconClassName] = useState("");
@@ -40,22 +50,38 @@ export const IconCreator: React.FC<IconCreatorProps> = ({
       const iconData: IconData = {
         className: iconClassName,
         type: displayType,
-        file: "generated",
+        file: saveToDirectory
+          ? `${outputDirectory}/${iconClassName}.css`
+          : "generated",
         svgData: optimizedSvg,
       };
 
-      // Create and trigger download of CSS file
-      const blob = new Blob([cssContent], { type: "text/css" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${iconClassName}.css`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      if (saveToDirectory) {
+        // Save the CSS file to the directory
+        const cssSaveResult = await saveIconToDirectory(
+          outputDirectory,
+          iconClassName,
+          cssContent
+        );
 
-      onIconCreated?.(iconData);
+        // Also save the SVG file for reference
+        const svgSaveResult = await saveSvgToDirectory(
+          outputDirectory,
+          iconClassName,
+          optimizedSvg
+        );
+
+        if (cssSaveResult.success) {
+          onFileSaved?.(cssSaveResult);
+          onIconCreated?.(iconData);
+        } else {
+          onError?.(cssSaveResult.message);
+        }
+      } else {
+        // Use the existing download functionality
+        downloadCSS(cssContent, `${iconClassName}.css`);
+        onIconCreated?.(iconData);
+      }
 
       // Reset form
       setSvg("");
@@ -94,7 +120,9 @@ export const IconCreator: React.FC<IconCreatorProps> = ({
               <path d="M14 6v-.5a2.5 2.5 0 0 1 5 0V6"></path>
             </svg>
             <span className="text-sm text-gray-500">
-              SVGs are automatically compressed
+              {saveToDirectory
+                ? "SVGs are saved to directory and compressed"
+                : "SVGs are automatically compressed"}
             </span>
           </h2>
         </div>
@@ -162,7 +190,11 @@ export const IconCreator: React.FC<IconCreatorProps> = ({
               className="btn btn-primary"
               disabled={isProcessing}
             >
-              {isProcessing ? "Processing..." : "Create Icon & Download CSS"}
+              {isProcessing
+                ? "Processing..."
+                : saveToDirectory
+                ? `Create Icon & Save to ${outputDirectory}`
+                : "Create Icon & Download CSS"}
             </button>
           </form>
         </div>

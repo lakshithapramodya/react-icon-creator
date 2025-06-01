@@ -2,6 +2,8 @@
 import { useState } from "react";
 
 // src/utils/iconUtils.ts
+import * as fse from "fs-extra";
+import * as path from "path";
 var isValidSVG = (svgString) => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(svgString, "image/svg+xml");
@@ -59,6 +61,50 @@ var calculateCompressionStats = (originalSvg, optimizedSvg) => {
     savings: `${savings}%`
   };
 };
+var ensureDirectoryExists = (directory) => {
+  try {
+    fse.ensureDirSync(directory);
+  } catch (error) {
+    throw new Error(
+      `Failed to create directory: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+};
+var saveToFile = async (directory, filename, content, options = {}) => {
+  try {
+    ensureDirectoryExists(directory);
+    const filePath = path.join(directory, filename);
+    const fileExt = path.extname(filename).slice(1);
+    const className = path.basename(filename, path.extname(filename));
+    await fse.writeFile(filePath, content, {
+      encoding: options.encoding || "utf8",
+      flag: options.flag || "w",
+      mode: options.mode || 438
+    });
+    return {
+      success: true,
+      message: `File saved successfully at ${filePath}`,
+      filePath,
+      className,
+      fileType: fileExt
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: `Failed to save file: ${error instanceof Error ? error.message : String(error)}`,
+      className: path.basename(filename, path.extname(filename)),
+      fileType: path.extname(filename).slice(1)
+    };
+  }
+};
+var saveIconToDirectory = async (directory, className, cssContent) => {
+  const filename = `${className}.css`;
+  return saveToFile(directory, filename, cssContent);
+};
+var saveSvgToDirectory = async (directory, iconName, svgContent) => {
+  const filename = `${iconName}.svg`;
+  return saveToFile(directory, filename, svgContent);
+};
 
 // src/components/IconCreator.tsx
 import { jsx, jsxs } from "react/jsx-runtime";
@@ -66,7 +112,10 @@ var IconCreator = ({
   onIconCreated,
   onError,
   className = "",
-  style = {}
+  style = {},
+  saveToDirectory = false,
+  outputDirectory = "public/icons",
+  onFileSaved
 }) => {
   const [svg, setSvg] = useState("");
   const [iconClassName, setIconClassName] = useState("");
@@ -93,19 +142,30 @@ var IconCreator = ({
       const iconData = {
         className: iconClassName,
         type: displayType,
-        file: "generated",
+        file: saveToDirectory ? `${outputDirectory}/${iconClassName}.css` : "generated",
         svgData: optimizedSvg
       };
-      const blob = new Blob([cssContent], { type: "text/css" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${iconClassName}.css`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      onIconCreated == null ? void 0 : onIconCreated(iconData);
+      if (saveToDirectory) {
+        const cssSaveResult = await saveIconToDirectory(
+          outputDirectory,
+          iconClassName,
+          cssContent
+        );
+        const svgSaveResult = await saveSvgToDirectory(
+          outputDirectory,
+          iconClassName,
+          optimizedSvg
+        );
+        if (cssSaveResult.success) {
+          onFileSaved == null ? void 0 : onFileSaved(cssSaveResult);
+          onIconCreated == null ? void 0 : onIconCreated(iconData);
+        } else {
+          onError == null ? void 0 : onError(cssSaveResult.message);
+        }
+      } else {
+        downloadCSS(cssContent, `${iconClassName}.css`);
+        onIconCreated == null ? void 0 : onIconCreated(iconData);
+      }
       setSvg("");
       setIconClassName("");
       setDisplayType("svg");
@@ -141,7 +201,7 @@ var IconCreator = ({
           ]
         }
       ),
-      /* @__PURE__ */ jsx("span", { className: "text-sm text-gray-500", children: "SVGs are automatically compressed" })
+      /* @__PURE__ */ jsx("span", { className: "text-sm text-gray-500", children: saveToDirectory ? "SVGs are saved to directory and compressed" : "SVGs are automatically compressed" })
     ] }) }),
     /* @__PURE__ */ jsx("div", { className: "card-content", children: /* @__PURE__ */ jsxs("form", { onSubmit: handleSubmit, children: [
       /* @__PURE__ */ jsxs("div", { className: "form-group", children: [
@@ -212,7 +272,7 @@ var IconCreator = ({
           type: "submit",
           className: "btn btn-primary",
           disabled: isProcessing,
-          children: isProcessing ? "Processing..." : "Create Icon & Download CSS"
+          children: isProcessing ? "Processing..." : saveToDirectory ? `Create Icon & Save to ${outputDirectory}` : "Create Icon & Download CSS"
         }
       )
     ] }) })
@@ -583,8 +643,12 @@ export {
   IconManager,
   calculateCompressionStats,
   downloadCSS,
+  ensureDirectoryExists,
   generateCSS,
   isValidSVG,
   optimizeSVG,
+  saveIconToDirectory,
+  saveSvgToDirectory,
+  saveToFile,
   useIconManager
 };

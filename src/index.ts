@@ -13,6 +13,11 @@ export {
   downloadCSS,
   isValidSVG,
   calculateCompressionStats,
+  // New file saving utilities
+  ensureDirectoryExists,
+  saveToFile,
+  saveIconToDirectory,
+  saveSvgToDirectory,
 } from "./utils/iconUtils";
 
 // Types
@@ -23,4 +28,7 @@ export type {
   IconManagerProps,
   IconUtilsConfig,
   SaveIconResult,
+  // New types for file saving
+  FileSaveResult,
+  FileSystemOptions,
 } from "./types";

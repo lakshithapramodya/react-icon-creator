@@ -1,6 +1,6 @@
 {
   "name": "react-icon-creator",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A React component library for creating and managing SVG icons with automatic CSS generation and optimization",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -43,8 +43,12 @@
     "react": ">=16.8.0",
     "react-dom": ">=16.8.0"
   },
-  "dependencies": {},
+  "dependencies": {
+    "fs-extra": "^11.2.0",
+    "path": "^0.12.7"
+  },
   "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
     "react": "^18.0.0",

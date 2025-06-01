@@ -10,6 +10,9 @@ export interface IconCreatorProps {
   onError?: (error: string) => void;
   className?: string;
   style?: React.CSSProperties;
+  saveToDirectory?: boolean; // Whether to save the file to directory instead of downloading
+  outputDirectory?: string; // Directory path where files will be saved
+  onFileSaved?: (result: FileSaveResult) => void; // Callback when file is saved
 }
 
 export interface IconEditorProps {
@@ -39,4 +42,18 @@ export interface SaveIconResult {
   message: string;
   originalSize?: number;
   optimizedSize?: number;
+}
+
+export interface FileSaveResult {
+  success: boolean;
+  message: string;
+  filePath?: string;
+  className: string;
+  fileType: "css" | "svg";
+}
+
+export interface FileSystemOptions {
+  encoding?: string;
+  flag?: string;
+  mode?: number;
 }

@@ -11,6 +11,9 @@ interface IconCreatorProps {
     onError?: (error: string) => void;
     className?: string;
     style?: React.CSSProperties;
+    saveToDirectory?: boolean;
+    outputDirectory?: string;
+    onFileSaved?: (result: FileSaveResult) => void;
 }
 interface IconEditorProps {
     icon: IconData;
@@ -36,6 +39,18 @@ interface SaveIconResult {
     message: string;
     originalSize?: number;
     optimizedSize?: number;
+}
+interface FileSaveResult {
+    success: boolean;
+    message: string;
+    filePath?: string;
+    className: string;
+    fileType: "css" | "svg";
+}
+interface FileSystemOptions {
+    encoding?: string;
+    flag?: string;
+    mode?: number;
 }
 
 declare const IconCreator: React$1.FC<IconCreatorProps>;
@@ -65,5 +80,35 @@ declare const calculateCompressionStats: (originalSvg: string, optimizedSvg: str
     optimizedSize: number;
     savings: string;
 };
+/**
+ * Ensures a directory exists, creating it if necessary
+ * @param directory - Path to the directory
+ */
+declare const ensureDirectoryExists: (directory: string) => void;
+/**
+ * Saves content to a file in the specified directory
+ * @param directory - Directory to save the file in
+ * @param filename - Name of the file
+ * @param content - Content to save
+ * @param options - File system options
+ * @returns Promise resolving to a FileSaveResult object
+ */
+declare const saveToFile: (directory: string, filename: string, content: string, options?: FileSystemOptions) => Promise<FileSaveResult>;
+/**
+ * Saves an icon as CSS to the specified directory
+ * @param directory - Directory to save the file in
+ * @param className - CSS class name for the icon
+ * @param cssContent - CSS content to save
+ * @returns Promise resolving to a FileSaveResult object
+ */
+declare const saveIconToDirectory: (directory: string, className: string, cssContent: string) => Promise<FileSaveResult>;
+/**
+ * Saves an SVG file to the specified directory
+ * @param directory - Directory to save the file in
+ * @param iconName - Name for the icon
+ * @param svgContent - SVG content to save
+ * @returns Promise resolving to a FileSaveResult object
+ */
+declare const saveSvgToDirectory: (directory: string, iconName: string, svgContent: string) => Promise<FileSaveResult>;
 
-export { IconCreator, type IconCreatorProps, type IconData, IconEditor, type IconEditorProps, IconManager, type IconManagerProps, type IconUtilsConfig, type SaveIconResult, calculateCompressionStats, downloadCSS, generateCSS, isValidSVG, optimizeSVG, useIconManager };
+export { type FileSaveResult, type FileSystemOptions, IconCreator, type IconCreatorProps, type IconData, IconEditor, type IconEditorProps, IconManager, type IconManagerProps, type IconUtilsConfig, type SaveIconResult, calculateCompressionStats, downloadCSS, ensureDirectoryExists, generateCSS, isValidSVG, optimizeSVG, saveIconToDirectory, saveSvgToDirectory, saveToFile, useIconManager };
