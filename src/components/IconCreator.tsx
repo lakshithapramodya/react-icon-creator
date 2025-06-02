@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { IconCreatorProps, IconData } from "../types";
 import {
   optimizeSVG,
@@ -8,6 +8,7 @@ import {
   saveIconToDirectory,
   saveSvgToDirectory,
 } from "../utils/iconUtils";
+import { isBrowser, supportsFileSystem } from "../utils/envUtils";
 
 export const IconCreator: React.FC<IconCreatorProps> = ({
   onIconCreated,
@@ -22,6 +23,19 @@ export const IconCreator: React.FC<IconCreatorProps> = ({
   const [iconClassName, setIconClassName] = useState("");
   const [displayType, setDisplayType] = useState<"svg" | "background">("svg");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [canSaveToDirectory, setCanSaveToDirectory] = useState(false);
+
+  // Check if file system operations are supported
+  useEffect(() => {
+    setCanSaveToDirectory(supportsFileSystem());
+
+    // Warn if user wants to save to directory but it's not supported
+    if (saveToDirectory && !supportsFileSystem()) {
+      console.warn(
+        "File system operations are not supported in this environment. Files will be downloaded instead."
+      );
+    }
+  }, [saveToDirectory]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,13 +64,16 @@ export const IconCreator: React.FC<IconCreatorProps> = ({
       const iconData: IconData = {
         className: iconClassName,
         type: displayType,
-        file: saveToDirectory
+        file: saveToDirectory && canSaveToDirectory
           ? `${outputDirectory}/${iconClassName}.css`
           : "generated",
         svgData: optimizedSvg,
       };
 
-      if (saveToDirectory) {
+      // Determine whether to save to directory or download
+      const shouldSaveToDirectory = saveToDirectory && canSaveToDirectory;
+
+      if (shouldSaveToDirectory) {
         // Save the CSS file to the directory
         const cssSaveResult = await saveIconToDirectory(
           outputDirectory,
@@ -75,7 +92,9 @@ export const IconCreator: React.FC<IconCreatorProps> = ({
           onFileSaved?.(cssSaveResult);
           onIconCreated?.(iconData);
         } else {
+          // If saving to directory fails, fall back to downloading
           onError?.(cssSaveResult.message);
+          downloadCSS(cssContent, `${iconClassName}.css`);
         }
       } else {
         // Use the existing download functionality
@@ -120,9 +139,15 @@ export const IconCreator: React.FC<IconCreatorProps> = ({
               <path d="M14 6v-.5a2.5 2.5 0 0 1 5 0V6"></path>
             </svg>
             <span className="text-sm text-gray-500">
-              {saveToDirectory
+              {saveToDirectory && canSaveToDirectory
                 ? "SVGs are saved to directory and compressed"
                 : "SVGs are automatically compressed"}
+              {saveToDirectory && !canSaveToDirectory && (
+                <span className="text-yellow-500">
+                  {" "}
+                  (Directory save not available in this environment)
+                </span>
+              )}
             </span>
           </h2>
         </div>
@@ -192,7 +217,7 @@ export const IconCreator: React.FC<IconCreatorProps> = ({
             >
               {isProcessing
                 ? "Processing..."
-                : saveToDirectory
+                : saveToDirectory && canSaveToDirectory
                 ? `Create Icon & Save to ${outputDirectory}`
                 : "Create Icon & Download CSS"}
             </button>

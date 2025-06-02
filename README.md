@@ -54,6 +54,25 @@ function App() {
 export default App;
 ```
 
+## Environment Support
+
+This package supports both Node.js and browser environments:
+
+- In browsers (including CodeSandbox, Stackblitz, etc.), file system operations are automatically disabled and the package falls back to downloading icons.
+- In Node.js environments (like Next.js server components or Node.js scripts), the package can save files directly to the file system.
+
+The package automatically detects the environment and adjusts its behavior accordingly. You don't need to change your code when moving between environments.
+
+```jsx
+// This code works in both browser and Node.js environments
+<IconCreator
+  saveToDirectory={true} // Will be ignored in browsers and enabled in Node.js
+  outputDirectory="public/icons"
+  onIconCreated={(icon) => console.log("Icon created:", icon)}
+  onFileSaved={(result) => console.log(`File saved: ${result.filePath}`)}
+/>
+```
+
 ## Components
 
 ### IconCreator
@@ -160,6 +179,31 @@ const {
   importIcons, // Import icons from JSON
   iconCount, // Number of icons
 } = useIconManager(initialIcons);
+```
+
+## Environment Utilities
+
+The package includes utilities to detect the current environment:
+
+```jsx
+import { isBrowser, isNode, supportsFileSystem } from "react-icon-creator";
+
+// Check if running in a browser
+if (isBrowser()) {
+  console.log("Running in a browser environment");
+}
+
+// Check if running in Node.js
+if (isNode()) {
+  console.log("Running in a Node.js environment");
+}
+
+// Check if file system operations are supported
+if (supportsFileSystem()) {
+  console.log("File system operations are supported");
+} else {
+  console.log("File system operations are not supported");
+}
 ```
 
 ## Utility Functions
@@ -326,6 +370,12 @@ Creates icons as background images with fixed colors from the original SVG.
 MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Changelog
+
+### 1.1.1
+
+- Improved browser compatibility for CodeSandbox and other browser environments
+- Added automatic environment detection to gracefully handle file system operations
+- Fixed "process.emitWarning is not a function" error in browser environments
 
 ### 1.1.0
 

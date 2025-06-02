@@ -20,6 +20,9 @@ export {
   saveSvgToDirectory,
 } from "./utils/iconUtils";
 
+// Environment utilities
+export { isBrowser, isNode, supportsFileSystem } from "./utils/envUtils";
+
 // Types
 export type {
   IconData,

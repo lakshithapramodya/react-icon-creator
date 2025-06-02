@@ -1,14 +1,57 @@
+var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
+  get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
+}) : x)(function(x) {
+  if (typeof require !== "undefined") return require.apply(this, arguments);
+  throw Error('Dynamic require of "' + x + '" is not supported');
+});
+
 // src/components/IconCreator.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+// src/utils/envUtils.ts
+var isBrowser = () => {
+  return typeof window !== "undefined" && typeof document !== "undefined";
+};
+var isNode = () => {
+  return typeof process !== "undefined" && process.versions != null && process.versions.node != null;
+};
+var supportsFileSystem = () => {
+  try {
+    if (isNode()) {
+      __require("fs");
+      return true;
+    }
+    return false;
+  } catch (e) {
+    return false;
+  }
+};
 
 // src/utils/iconUtils.ts
-import * as fse from "fs-extra";
-import * as path from "path";
+var fse = null;
+var path = null;
+var loadNodeModules = () => {
+  if (supportsFileSystem()) {
+    try {
+      fse = __require("fs-extra");
+      path = __require("path");
+      return true;
+    } catch (e) {
+      console.error("Failed to load Node.js modules:", e);
+      return false;
+    }
+  }
+  return false;
+};
 var isValidSVG = (svgString) => {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(svgString, "image/svg+xml");
-  const errorElement = doc.querySelector("parsererror");
-  return !errorElement;
+  if (isBrowser()) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgString, "image/svg+xml");
+    const errorElement = doc.querySelector("parsererror");
+    return !errorElement;
+  } else {
+    return svgString.includes("<svg") && svgString.includes("</svg>");
+  }
 };
 var optimizeSVG = async (svg, config = {}) => {
   return svg;
@@ -41,6 +84,10 @@ var generateCSS = (className, optimizedSvg, displayType) => {
   }
 };
 var downloadCSS = (cssContent, fileName) => {
+  if (!isBrowser()) {
+    console.warn("downloadCSS is only available in browser environments");
+    return;
+  }
   const blob = new Blob([cssContent], { type: "text/css" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -52,8 +99,16 @@ var downloadCSS = (cssContent, fileName) => {
   URL.revokeObjectURL(url);
 };
 var calculateCompressionStats = (originalSvg, optimizedSvg) => {
-  const originalSize = new TextEncoder().encode(originalSvg).length;
-  const optimizedSize = new TextEncoder().encode(optimizedSvg).length;
+  let originalSize;
+  let optimizedSize;
+  if (isBrowser() && typeof TextEncoder !== "undefined") {
+    const encoder = new TextEncoder();
+    originalSize = encoder.encode(originalSvg).length;
+    optimizedSize = encoder.encode(optimizedSvg).length;
+  } else {
+    originalSize = Buffer.byteLength(originalSvg, "utf8");
+    optimizedSize = Buffer.byteLength(optimizedSvg, "utf8");
+  }
   const savings = ((originalSize - optimizedSize) / originalSize * 100).toFixed(1);
   return {
     originalSize,
@@ -62,17 +117,36 @@ var calculateCompressionStats = (originalSvg, optimizedSvg) => {
   };
 };
 var ensureDirectoryExists = (directory) => {
+  if (!loadNodeModules() || !fse) {
+    console.warn(
+      "File system operations are not supported in this environment"
+    );
+    return false;
+  }
   try {
     fse.ensureDirSync(directory);
+    return true;
   } catch (error) {
-    throw new Error(
+    console.error(
       `Failed to create directory: ${error instanceof Error ? error.message : String(error)}`
     );
+    return false;
   }
 };
 var saveToFile = async (directory, filename, content, options = {}) => {
+  if (!loadNodeModules() || !fse || !path) {
+    return {
+      success: false,
+      message: "File system operations are not supported in this environment",
+      className: filename.split(".")[0],
+      fileType: filename.split(".").pop() || "css"
+    };
+  }
   try {
-    ensureDirectoryExists(directory);
+    const directoryCreated = ensureDirectoryExists(directory);
+    if (!directoryCreated) {
+      throw new Error("Could not create directory");
+    }
     const filePath = path.join(directory, filename);
     const fileExt = path.extname(filename).slice(1);
     const className = path.basename(filename, path.extname(filename));
@@ -121,6 +195,15 @@ var IconCreator = ({
   const [iconClassName, setIconClassName] = useState("");
   const [displayType, setDisplayType] = useState("svg");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [canSaveToDirectory, setCanSaveToDirectory] = useState(false);
+  useEffect(() => {
+    setCanSaveToDirectory(supportsFileSystem());
+    if (saveToDirectory && !supportsFileSystem()) {
+      console.warn(
+        "File system operations are not supported in this environment. Files will be downloaded instead."
+      );
+    }
+  }, [saveToDirectory]);
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!svg.trim()) {
@@ -142,10 +225,11 @@ var IconCreator = ({
       const iconData = {
         className: iconClassName,
         type: displayType,
-        file: saveToDirectory ? `${outputDirectory}/${iconClassName}.css` : "generated",
+        file: saveToDirectory && canSaveToDirectory ? `${outputDirectory}/${iconClassName}.css` : "generated",
         svgData: optimizedSvg
       };
-      if (saveToDirectory) {
+      const shouldSaveToDirectory = saveToDirectory && canSaveToDirectory;
+      if (shouldSaveToDirectory) {
         const cssSaveResult = await saveIconToDirectory(
           outputDirectory,
           iconClassName,
@@ -161,6 +245,7 @@ var IconCreator = ({
           onIconCreated == null ? void 0 : onIconCreated(iconData);
         } else {
           onError == null ? void 0 : onError(cssSaveResult.message);
+          downloadCSS(cssContent, `${iconClassName}.css`);
         }
       } else {
         downloadCSS(cssContent, `${iconClassName}.css`);
@@ -201,7 +286,13 @@ var IconCreator = ({
           ]
         }
       ),
-      /* @__PURE__ */ jsx("span", { className: "text-sm text-gray-500", children: saveToDirectory ? "SVGs are saved to directory and compressed" : "SVGs are automatically compressed" })
+      /* @__PURE__ */ jsxs("span", { className: "text-sm text-gray-500", children: [
+        saveToDirectory && canSaveToDirectory ? "SVGs are saved to directory and compressed" : "SVGs are automatically compressed",
+        saveToDirectory && !canSaveToDirectory && /* @__PURE__ */ jsxs("span", { className: "text-yellow-500", children: [
+          " ",
+          "(Directory save not available in this environment)"
+        ] })
+      ] })
     ] }) }),
     /* @__PURE__ */ jsx("div", { className: "card-content", children: /* @__PURE__ */ jsxs("form", { onSubmit: handleSubmit, children: [
       /* @__PURE__ */ jsxs("div", { className: "form-group", children: [
@@ -272,7 +363,7 @@ var IconCreator = ({
           type: "submit",
           className: "btn btn-primary",
           disabled: isProcessing,
-          children: isProcessing ? "Processing..." : saveToDirectory ? `Create Icon & Save to ${outputDirectory}` : "Create Icon & Download CSS"
+          children: isProcessing ? "Processing..." : saveToDirectory && canSaveToDirectory ? `Create Icon & Save to ${outputDirectory}` : "Create Icon & Download CSS"
         }
       )
     ] }) })
@@ -645,10 +736,13 @@ export {
   downloadCSS,
   ensureDirectoryExists,
   generateCSS,
+  isBrowser,
+  isNode,
   isValidSVG,
   optimizeSVG,
   saveIconToDirectory,
   saveSvgToDirectory,
   saveToFile,
+  supportsFileSystem,
   useIconManager
 };

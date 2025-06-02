@@ -83,8 +83,9 @@ declare const calculateCompressionStats: (originalSvg: string, optimizedSvg: str
 /**
  * Ensures a directory exists, creating it if necessary
  * @param directory - Path to the directory
+ * @returns {boolean} - True if successful, false if failed or not supported
  */
-declare const ensureDirectoryExists: (directory: string) => void;
+declare const ensureDirectoryExists: (directory: string) => boolean;
 /**
  * Saves content to a file in the specified directory
  * @param directory - Directory to save the file in
@@ -111,4 +112,23 @@ declare const saveIconToDirectory: (directory: string, className: string, cssCon
  */
 declare const saveSvgToDirectory: (directory: string, iconName: string, svgContent: string) => Promise<FileSaveResult>;
 
-export { type FileSaveResult, type FileSystemOptions, IconCreator, type IconCreatorProps, type IconData, IconEditor, type IconEditorProps, IconManager, type IconManagerProps, type IconUtilsConfig, type SaveIconResult, calculateCompressionStats, downloadCSS, ensureDirectoryExists, generateCSS, isValidSVG, optimizeSVG, saveIconToDirectory, saveSvgToDirectory, saveToFile, useIconManager };
+/**
+ * Utility functions for environment detection
+ */
+/**
+ * Check if the code is running in a browser environment
+ * @returns {boolean} True if running in a browser
+ */
+declare const isBrowser: () => boolean;
+/**
+ * Check if the code is running in a Node.js environment
+ * @returns {boolean} True if running in Node.js
+ */
+declare const isNode: () => boolean;
+/**
+ * Check if the environment supports file system operations
+ * @returns {boolean} True if file system operations are supported
+ */
+declare const supportsFileSystem: () => boolean;
+
+export { type FileSaveResult, type FileSystemOptions, IconCreator, type IconCreatorProps, type IconData, IconEditor, type IconEditorProps, IconManager, type IconManagerProps, type IconUtilsConfig, type SaveIconResult, calculateCompressionStats, downloadCSS, ensureDirectoryExists, generateCSS, isBrowser, isNode, isValidSVG, optimizeSVG, saveIconToDirectory, saveSvgToDirectory, saveToFile, supportsFileSystem, useIconManager };
